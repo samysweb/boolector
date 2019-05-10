@@ -9,6 +9,8 @@
  *  See COPYING for more information on using this software.
  */
 
+#include "boolector.h"
+
 #include "btorbeta.h"
 #include "btorbv.h"
 #include "btorcore.h"
@@ -6712,7 +6714,15 @@ rewrite_urem_exp (Btor *btor, BtorNode *e0, BtorNode *e1)
     assert (!result);
     if (!result)
     {
-      result = btor_node_create_bv_urem (btor, e0, e1);
+      uint32_t width = boolector_get_width(btor, BTOR_EXPORT_BOOLECTOR_NODE(e1));
+      // result = btor_node_create_bv_urem (btor, e0, e1);
+      BoolectorNode *remainder = boolector_var(btor, boolector_bitvec_sort(btor, width), NULL);
+      BoolectorNode *factor = boolector_var (btor, boolector_bitvec_sort(btor, width), NULL);
+      boolector_assert(btor, boolector_ult(btor, remainder, BTOR_EXPORT_BOOLECTOR_NODE(e1)));
+      BoolectorNode *multiple = boolector_mul(btor, factor, BTOR_EXPORT_BOOLECTOR_NODE(e1));
+      BoolectorNode *substracted = boolector_sub(btor, BTOR_EXPORT_BOOLECTOR_NODE(e0), remainder);
+      boolector_assert(btor, boolector_eq(btor, multiple, substracted));
+      result = BTOR_IMPORT_BOOLECTOR_NODE(remainder);
     }
     else
     {
