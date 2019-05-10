@@ -6714,15 +6714,46 @@ rewrite_urem_exp (Btor *btor, BtorNode *e0, BtorNode *e1)
     assert (!result);
     if (!result)
     {
-      uint32_t width = boolector_get_width(btor, BTOR_EXPORT_BOOLECTOR_NODE(e1));
+      /*BoolectorNode *e00 = boolector_copy(btor, BTOR_EXPORT_BOOLECTOR_NODE(e0));
+      BoolectorNode *e11 = boolector_copy(btor, BTOR_EXPORT_BOOLECTOR_NODE(e1));
+      // TODO(steuber): Is this right or wrong?
+      // TODO(steuber): CHANGE THIS
+      uint32_t width = btor_node_bv_get_width(btor, e1);
       // result = btor_node_create_bv_urem (btor, e0, e1);
       BoolectorNode *remainder = boolector_var(btor, boolector_bitvec_sort(btor, width), NULL);
       BoolectorNode *factor = boolector_var (btor, boolector_bitvec_sort(btor, width), NULL);
       boolector_assert(btor, boolector_ult(btor, remainder, BTOR_EXPORT_BOOLECTOR_NODE(e1)));
+      // Overflows?
       BoolectorNode *multiple = boolector_mul(btor, factor, BTOR_EXPORT_BOOLECTOR_NODE(e1));
       BoolectorNode *substracted = boolector_sub(btor, BTOR_EXPORT_BOOLECTOR_NODE(e0), remainder);
       boolector_assert(btor, boolector_eq(btor, multiple, substracted));
       result = BTOR_IMPORT_BOOLECTOR_NODE(remainder);
+      boolector_release(btor, e00);
+      boolector_release(btor, e11);*/
+      uint32_t width = btor_node_bv_get_width(btor, e1);
+      BtorNode *remainder = BTOR_IMPORT_BOOLECTOR_NODE(boolector_var(btor, boolector_bitvec_sort(btor, width), NULL));
+      BtorNode *factor = BTOR_IMPORT_BOOLECTOR_NODE(boolector_var (btor, boolector_bitvec_sort(btor, width), NULL));
+      // remainder < e1
+      btor_assert_exp(btor, btor_exp_bv_ult(btor, remainder, e1));
+      // factor*e1
+      BtorNode *f1 = btor_exp_bv_uext (btor, factor, width);
+      BtorNode *f2 = btor_exp_bv_uext (btor, e1, width);
+      BtorNode *multiple = btor_exp_bv_mul(btor, f1, f2);
+      BtorNode *multiple1 = btor_exp_bv_slice(btor, multiple, 2*width-1, width);
+      BtorNode *multiple2 = btor_exp_bv_slice(btor, multiple, width-1, 0);
+      // No overflows
+      btor_assert_exp(btor, btor_exp_eq(btor, multiple1, btor_exp_bv_zero(btor, btor_sort_bv(btor, width))));
+      // TODO(steuber): negative values?
+      // e0-remainder
+      BtorNode *substracted = btor_exp_bv_sub(btor, e0, remainder);
+      // no unsigned overflow
+      btor_assert_exp(btor, btor_exp_bv_not(btor, btor_exp_bv_usubo(btor, btor_node_copy(btor, e0), btor_node_copy(btor, remainder))));
+      
+      btor_assert_exp(btor, btor_exp_eq(btor, multiple2, substracted));
+      
+      
+      result = remainder;
+      //btor_node_create_bv_urem (btor, e0, e1);
     }
     else
     {
