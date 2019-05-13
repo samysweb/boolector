@@ -17,7 +17,7 @@ case "$(uname -s)" in
      EXTRA_FLAGS="--optimize --no-stats --no-trace"
      ;;
 esac
-./configure.sh --shared ${EXTRA_FLAGS}
+./configure.sh --shared --trace ${EXTRA_FLAGS}
 make -j${NPROC} libpicosat.a libpicosat.so
 install_lib libpicosat.a
 install_lib libpicosat.so

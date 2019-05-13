@@ -9,6 +9,8 @@
  *  See COPYING for more information on using this software.
  */
 
+#include <stdio.h>
+
 #include "sat/btorpicosat.h"
 #include "btorabort.h"
 
@@ -30,6 +32,8 @@ init (BtorSATMgr *smgr)
                        (picosat_malloc) btor_mem_sat_malloc,
                        (picosat_realloc) btor_mem_sat_realloc,
                        (picosat_free) btor_mem_sat_free);
+  int code = picosat_enable_trace_generation (res);
+  assert(code != 0);
 
   picosat_set_global_default_phase (res, 0);
 
@@ -45,7 +49,20 @@ add (BtorSATMgr *smgr, int32_t lit)
 static int32_t
 sat (BtorSATMgr *smgr, int32_t limit)
 {
-  return picosat_sat (smgr->solver, limit);
+  printf("Calling picosat_sat...\n");
+  int res = picosat_sat (smgr->solver, limit);
+  if (res == PICOSAT_UNSATISFIABLE) {
+    int totalClauses = picosat_added_original_clauses(smgr->solver);
+    int coreClauses = 0;
+    for (int i = 0; i<totalClauses; i++) {
+      if (picosat_coreclause(smgr->solver, i)) {
+        coreClauses++;
+      }
+    }
+    printf("Total clauses: %d\n", totalClauses);
+    printf("Core clauses: %d\n", coreClauses);
+  }
+  return res;
 }
 
 static int32_t
