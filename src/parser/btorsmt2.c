@@ -17,6 +17,7 @@
 #include "utils/btormem.h"
 #include "utils/btorutil.h"
 
+#include <time.h>
 #include <ctype.h>
 #include <limits.h>
 #include <stdarg.h>
@@ -4387,6 +4388,7 @@ print_success (BtorSMT2Parser *parser)
 static void
 check_sat (BtorSMT2Parser *parser)
 {
+  clock_t t = clock();
   assert (!parser->error);
   while (!BTOR_EMPTY_STACK (parser->sat_assuming_assumptions))
   {
@@ -4425,6 +4427,10 @@ check_sat (BtorSMT2Parser *parser)
               "'check-sat' command");
     parser->done = true;
   }
+  t = clock()-t;
+  double elapsed_secs = ((double)t) / CLOCKS_PER_SEC;
+  fprintf (stderr, "[BTOR>check_sat] %f seconds\n", elapsed_secs);
+  fflush (stderr);
 }
 
 static int32_t
