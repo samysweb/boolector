@@ -165,6 +165,7 @@ typedef enum BtorSMT2Tag
   BTOR_VALUES_TAG_SMT2                    = 32 + BTOR_KEYWORD_TAG_CLASS_SMT2,
   BTOR_VERBOSITY_TAG_SMT2                 = 33 + BTOR_KEYWORD_TAG_CLASS_SMT2,
   BTOR_VERSION_TAG_SMT2                   = 34 + BTOR_KEYWORD_TAG_CLASS_SMT2,
+  BTOR_GLOBAL_DECLARATIONS_TAG_SMT2       = 35 + BTOR_KEYWORD_TAG_CLASS_SMT2,
 
   /* ---------------------------------------------------------------------- */
   /* Theories                                                               */
@@ -384,6 +385,7 @@ typedef struct BtorSMT2Parser
 
   /* SMT2 options */
   bool print_success;
+  bool global_declarations;
 } BtorSMT2Parser;
 
 static int32_t
@@ -732,16 +734,19 @@ close_current_scope (BtorSMT2Parser *parser)
 
   start = btor_util_time_stamp ();
 
-  /* delete symbols from current scope */
-  for (i = 0; i < parser->symbol.size; i++)
+  if (!parser->global_declarations)
   {
-    node = parser->symbol.table[i];
-    while (node)
+    /* delete symbols from current scope */
+    for (i = 0; i < parser->symbol.size; i++)
     {
-      next = node->next;
-      if (node->scope_level == parser->scope_level)
-        remove_symbol_smt2 (parser, node);
-      node = next;
+      node = parser->symbol.table[i];
+      while (node)
+      {
+        next = node->next;
+        if (node->scope_level == parser->scope_level)
+          remove_symbol_smt2 (parser, node);
+        node = next;
+      }
     }
   }
 
@@ -837,6 +842,7 @@ insert_keywords_smt2 (BtorSMT2Parser *parser)
   INSERT (":values", BTOR_VALUES_TAG_SMT2);
   INSERT (":verbosity", BTOR_VERBOSITY_TAG_SMT2);
   INSERT (":version", BTOR_VERSION_TAG_SMT2);
+  INSERT (":global-declarations", BTOR_GLOBAL_DECLARATIONS_TAG_SMT2);
 }
 
 static void
@@ -983,6 +989,7 @@ insert_logics_smt2 (BtorSMT2Parser *parser)
   INSERT ("UFBV", BTOR_LOGIC_UFBV_TAG_SMT2);
   INSERT ("ABV", BTOR_LOGIC_ABV_TAG_SMT2);
   INSERT ("ALL", BTOR_LOGIC_ALL_TAG_SMT2);
+  INSERT ("ALL_SUPPORTED", BTOR_LOGIC_ALL_TAG_SMT2);
 }
 
 static BtorSMT2Parser *
@@ -4357,6 +4364,22 @@ set_option_smt2 (BtorSMT2Parser *parser)
       parser->print_success = true;
     else if (tag == BTOR_FALSE_TAG_SMT2)
       parser->print_success = false;
+    else
+      return !perr_smt2 (
+          parser, "expected Boolean argument at '%s'", parser->token.start);
+  }
+  else if (tag == BTOR_GLOBAL_DECLARATIONS_TAG_SMT2)
+  {
+    tag = read_token_smt2 (parser);
+    if (tag == BTOR_INVALID_TAG_SMT2)
+    {
+      assert (parser->error);
+      return 0;
+    }
+    if (tag == BTOR_FALSE_TAG_SMT2)
+      parser->global_declarations = false;
+    else if (tag == BTOR_TRUE_TAG_SMT2)
+      parser->global_declarations = true;
     else
       return !perr_smt2 (
           parser, "expected Boolean argument at '%s'", parser->token.start);
